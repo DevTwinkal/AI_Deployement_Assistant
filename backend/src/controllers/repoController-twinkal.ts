@@ -18,10 +18,8 @@ export const connectRepo = async (req: Request, res: Response) => {
         console.log(`Cloning ${repoUrl} to ${workspaceId}...`);
         await cloneRepository(repoUrl, workspaceId);
 
-        // Analyze structure using service
+        // Analyze structure
         const analysis = await analyzeProject(workspaceId);
-
-        // Get file list for UI
         const workspacePath = getWorkspacePath(workspaceId);
         const files = await fs.readdir(workspacePath);
 
@@ -29,7 +27,7 @@ export const connectRepo = async (req: Request, res: Response) => {
             success: true,
             message: 'Repository connected successfully',
             workspaceId,
-            analysis, // Return full analysis object
+            analysis,
             files: files.slice(0, 20)
         });
 

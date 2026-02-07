@@ -1,61 +1,79 @@
-export const API_BASE_URL = 'http://localhost:3000/api';
+export const API_BASE_URL = 'http://localhost:3000';
+
+const fetchWithAuth = async (url, options = {}) => {
+    // If url starts with / , append to base. If it doesn't contain /api or /auth, checked by caller
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        credentials: 'include', // Send cookies
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+        },
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP Error: ${response.status}`);
+    }
+    return response.json();
+};
+
+export const getMe = async () => {
+    return fetchWithAuth('/auth/me');
+};
+
+export const getMyRepos = async () => {
+    return fetchWithAuth('/api/repos');
+};
+
+export const logout = async () => {
+    return fetchWithAuth('/auth/logout');
+};
 
 export const connectRepo = async (repoUrl) => {
+    return fetchWithAuth('/api/repos/connect', {
+        method: 'POST',
+        body: JSON.stringify({ repoUrl }),
+    });
+};
+
+
+export const deployToVercel = async (workspaceId, analysis, onLog, onSuccess, onError) => {
     try {
-        const response = await fetch(`${API_BASE_URL}/repos/connect`, {
+        const response = await fetch(`${API_BASE_URL}/api/deploy`, {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ repoUrl }),
+            body: JSON.stringify({ workspaceId, analysis }),
         });
 
-        if (!response.ok) {
-            throw new Error(`Error: ${response.statusText}`);
-        }
+        if (!response.ok) throw new Error('Deployment request failed');
 
-        return await response.json();
-    } catch (error) {
-        console.error("API Call Failed:", error);
-        throw error;
-    }
-};
-
-export const deployToVercel = (workspaceId, analysis, onLog, onSuccess, onError) => {
-    const eventSource = new EventSource(`${API_BASE_URL}/deploy?workspaceId=${workspaceId}`); // Using Query for GET if simple SSE
-
-    // BUT we used POST for better body payload support. EventSource standard only supports GET.
-    // For this MVP, let's use fetch with readable stream which is more modern and supports POST
-
-    fetch(`${API_BASE_URL}/deploy`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ workspaceId, analysis }),
-    }).then(response => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
 
-        function read() {
-            reader.read().then(({ done, value }) => {
-                if (done) return;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n\n');
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n\n');
 
-                lines.forEach(line => {
-                    if (line.startsWith('data: ')) {
+            lines.forEach(line => {
+                if (line.startsWith('data: ')) {
+                    try {
                         const data = JSON.parse(line.substring(6));
                         if (data.type === 'log') onLog(data.message);
                         if (data.type === 'success') onSuccess(data.url);
                         if (data.type === 'error') onError(data.message);
+                    } catch (e) {
+                        console.error('Error parsing SSE data:', e);
                     }
-                });
-
-                read();
+                }
             });
         }
-        read();
-    }).catch(onError);
+    } catch (error) {
+        onError(error.message);
+    }
 };
