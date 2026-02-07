@@ -4,14 +4,7 @@
 
 ### 1. Environment Variables (`.env`)
 
-```bash
-PORT=3000
-GITHUB_CLIENT_ID=Ov23limeJ8Zr4zTNNr9Q
-GITHUB_CLIENT_SECRET=abfa942c26be6c2bd20f7f53bc5e7216b3357f78
-GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
-SESSION_SECRET=super_secret_1234
-FRONTEND_URL=http://localhost:5173
-```
+
 
 ### 2. Server Setup (`backend/src/index.ts`)
 
