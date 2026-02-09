@@ -13,10 +13,12 @@ export const AuthProvider = ({ children }) => {
 
     const checkAuth = async () => {
         try {
+            console.log('Checking authentication status...');
             const userData = await getMe();
+            console.log('User authenticated:', userData.login);
             setUser(userData);
         } catch (error) {
-            console.log('Not authenticated');
+            console.log('User not authenticated or error checking auth:', error.message);
             setUser(null);
         } finally {
             setLoading(false);
@@ -24,7 +26,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = () => {
-        window.location.href = `http://${window.location.hostname}:3000/auth/github`;
+        window.location.href = '/auth/github';
     };
 
     const logout = async () => {

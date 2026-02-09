@@ -38,6 +38,33 @@ function App() {
     }
   };
 
+  if (status === 'error' && !user) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-red-400 p-4 font-sans text-center">
+        <Bot size={64} className="mb-6 opacity-30 animate-pulse text-purple-500" />
+        <h1 className="text-3xl font-bold mb-3 text-slate-100">Connection Interrupted</h1>
+        <p className="text-slate-400 mb-8 max-w-lg leading-relaxed">
+          We encountered a problem validating your session or reaching the deployment engine.
+          Please ensure your local backend is running on port 3000.
+        </p>
+        <div className="flex gap-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-purple-500/20 transition-all active:scale-95"
+          >
+            Retry Connection
+          </button>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-xl font-bold transition-all active:scale-95"
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const handleDeploy = () => {
     if (!data) return;
     setStatus('deploying');

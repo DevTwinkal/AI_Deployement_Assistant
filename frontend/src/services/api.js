@@ -1,7 +1,4 @@
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-export const API_BASE_URL = isLocal
-    ? `http://${window.location.hostname}:3000`
-    : ''; // In prod (Vercel), requests will be proxied via relative path
+export const API_BASE_URL = ''; // Use relative paths for proxy/vercel
 
 const fetchWithAuth = async (url, options = {}) => {
     // If url starts with / , append to base. If it doesn't contain /api or /auth, checked by caller
