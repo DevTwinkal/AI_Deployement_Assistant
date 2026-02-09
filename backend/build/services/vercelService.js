@@ -47,8 +47,10 @@ const createDeployment = async (stream, workspaceId, analysis, token) => {
         const workspacePath = (0, fileUtils_1.getWorkspacePath)(workspaceId);
         stream.log(`Reading workspace content from ${workspaceId}...`);
         let files = await getAllFiles(workspacePath, workspacePath);
-        // Check if vercel.json already exists
-        const hasVercelConfig = files.some(f => f.file === 'vercel.json');
+        // Check if vercel.json already exists in the project root
+        const configPath = analysis.rootDirectory ? `${analysis.rootDirectory}/vercel.json` : 'vercel.json';
+        const hasVercelConfig = files.some(f => f.file === configPath);
+        // ... frameworkPreset logic ...
         // Determine framework preset
         let frameworkPreset = undefined;
         if (analysis.framework === 'Next.js')
@@ -57,22 +59,30 @@ const createDeployment = async (stream, workspaceId, analysis, token) => {
             frameworkPreset = 'create-react-app';
         else if (analysis.framework === 'Vite')
             frameworkPreset = 'vite';
+        else if (analysis.framework === 'Angular')
+            frameworkPreset = 'angular';
+        else if (analysis.framework === 'Vue')
+            frameworkPreset = 'vuejs';
+        else if (analysis.framework === 'Svelte')
+            frameworkPreset = 'sveltekit'; // SvelteKit is the common preset
+        else if (analysis.framework === 'Nuxt')
+            frameworkPreset = 'nuxtjs';
         // Add default vercel.json for SPAs to handle client-side routing
-        if (!hasVercelConfig && (analysis.framework === 'Vite' || analysis.framework === 'Create React App')) {
-            stream.log("Adding default vercel.json for SPA routing...");
-            // If the project is in a subdirectory, the rewrite destination needs to point to the index.html location
-            // However, usually Vercel build command outputs to outputDirectory, 
-            // and the rewrite should be relative to the deployment root.
-            // For SPAs, Vercel's documentation recommends:
+        const spaFrameworks = ['Vite', 'Create React App', 'Vue', 'Angular', 'Svelte'];
+        if (!hasVercelConfig && spaFrameworks.includes(analysis.framework)) {
+            stream.log(`Adding default vercel.json for SPA routing at ${configPath}...`);
             const spaConfig = {
                 rewrites: [{ source: "/(.*)", destination: "/index.html" }]
             };
             files.push({
-                file: 'vercel.json',
+                file: configPath,
                 data: JSON.stringify(spaConfig, null, 2)
             });
         }
         stream.log(`Prepared ${files.length} files for upload.`);
+        stream.log(`Project Analysis: ${analysis.framework} in ${analysis.rootDirectory || 'root'}`);
+        stream.log(`Build Command: ${analysis.buildCommand || 'default'}`);
+        stream.log(`Output Directory: ${analysis.outputDirectory || 'default'}`);
         const payload = {
             name: `ai-deploy-${workspaceId.substring(0, 8)}`,
             files,
@@ -80,7 +90,8 @@ const createDeployment = async (stream, workspaceId, analysis, token) => {
                 framework: frameworkPreset,
                 buildCommand: analysis.buildCommand || undefined,
                 outputDirectory: analysis.outputDirectory || undefined,
-                installCommand: analysis.installCommand || undefined
+                installCommand: analysis.installCommand || undefined,
+                rootDirectory: analysis.rootDirectory || undefined
             },
             target: 'production'
         };

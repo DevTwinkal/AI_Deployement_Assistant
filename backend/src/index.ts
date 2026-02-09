@@ -57,6 +57,10 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: '1.0.0' });
 });
 
-app.listen(PORT, () => {
-    console.log(`AI Deployment Copilot Backend running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`AI Deployment Copilot Backend running on port ${PORT}`);
+    });
+}
+
+export default app;

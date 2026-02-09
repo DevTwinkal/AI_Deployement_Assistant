@@ -3,7 +3,7 @@
     "private": true,
     "scripts": {
         "build": "cd frontend && npm install && npm run build",
-        "install": "cd frontend && npm install",
-        "dev": "cd frontend && npm run dev"
+        "install": "cd frontend && npm install && cd ../backend && npm install",
+        "dev": "npm run dev"
     }
 }

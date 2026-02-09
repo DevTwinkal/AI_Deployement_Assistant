@@ -1,14 +1,21 @@
 {
     "version": 2,
-    "public": true,
     "rewrites": [
         {
             "source": "/api/(.*)",
-            "destination": "http://localhost:3000/api/$1"
+            "destination": "/api/index.ts"
         },
         {
             "source": "/auth/(.*)",
-            "destination": "http://localhost:3000/auth/$1"
+            "destination": "/api/index.ts"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/frontend/dist/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/frontend/dist/index.html"
         }
     ]
 }

@@ -63,7 +63,19 @@ const callback = async (req, res) => {
                 console.error('Session save error:', err);
                 return res.redirect(`${process.env.FRONTEND_URL}/login?error=session_error`);
             }
-            res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+            // Dynamic redirect to keep origin consistent with where the user came from
+            const origin = req.get('origin') || req.get('referer');
+            let frontendBase = process.env.FRONTEND_URL || 'http://localhost:5173';
+            if (origin) {
+                try {
+                    const url = new URL(origin);
+                    frontendBase = `${url.protocol}//${url.host}`;
+                }
+                catch (e) {
+                    // Ignore invalid urls
+                }
+            }
+            res.redirect(`${frontendBase}/dashboard`);
         });
     }
     catch (error) {
