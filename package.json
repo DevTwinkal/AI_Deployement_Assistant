@@ -1,0 +1,9 @@
+{
+    "name": "ai-deployment-assistant-root",
+    "private": true,
+    "scripts": {
+        "build": "cd frontend && npm install && npm run build",
+        "install": "cd frontend && npm install",
+        "dev": "cd frontend && npm run dev"
+    }
+}

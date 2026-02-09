@@ -1,0 +1,14 @@
+{
+    "version": 2,
+    "public": true,
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "http://localhost:3000/api/$1"
+        },
+        {
+            "source": "/auth/(.*)",
+            "destination": "http://localhost:3000/auth/$1"
+        }
+    ]
+}
