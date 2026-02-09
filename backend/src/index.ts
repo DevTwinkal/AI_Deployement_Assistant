@@ -14,34 +14,39 @@ const PORT = process.env.PORT || 3000;
 
 // Configure CORS to allow credentials (cookies)
 const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
+    process.env.FRONTEND_URL,
+    'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'http://localhost:5173'
-];
+    /\.vercel\.app$/ // Allow all Vercel deployments
+].filter(Boolean) as (string | RegExp)[];
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.some(allowed =>
+            typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+        )) {
             callback(null, true);
         } else {
+            console.warn(`Blocked by CORS: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true, // Allow cookies
+    credentials: true,
 }));
 
-app.set('trust proxy', 1); // Trust first proxy
+app.set('trust proxy', 1);
 
 // Session Middleware
 app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key-change-it',
     resave: false,
     saveUninitialized: false,
+    name: 'ai_copilot_session',
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // true if https
-        httpOnly: true, // prevent JS access
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax'
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     }
 }));
 
