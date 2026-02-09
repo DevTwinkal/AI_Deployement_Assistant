@@ -28,6 +28,7 @@ export class DeploymentStream extends EventEmitter {
 interface VercelFile {
     file: string;
     data: string;
+    encoding?: 'base64';
 }
 
 export const deployToVercel = async (workspaceId: string, analysis: ProjectAnalysis): Promise<DeploymentStream> => {
@@ -56,15 +57,42 @@ const createDeployment = async (stream: DeploymentStream, workspaceId: string, a
         const workspacePath = getWorkspacePath(workspaceId);
         stream.log(`Reading workspace content from ${workspaceId}...`);
 
-        const files = await getAllFiles(workspacePath, workspacePath);
-        stream.log(`Prepared ${files.length} files for upload.`);
+        let files = await getAllFiles(workspacePath, workspacePath);
 
+        // Check if vercel.json already exists in the project root
+        const configPath = analysis.rootDirectory ? `${analysis.rootDirectory}/vercel.json` : 'vercel.json';
+        const hasVercelConfig = files.some(f => f.file === configPath);
+
+        // ... frameworkPreset logic ...
         // Determine framework preset
-        let frameworkPreset = undefined;
+        let frameworkPreset: string | undefined = undefined;
         if (analysis.framework === 'Next.js') frameworkPreset = 'nextjs';
         else if (analysis.framework === 'Create React App') frameworkPreset = 'create-react-app';
         else if (analysis.framework === 'Vite') frameworkPreset = 'vite';
-        // Python/Flask usually auto-detected or requires 'other' with config, leaving undefined for auto-detect often works best on Vercel unless specific
+        else if (analysis.framework === 'Angular') frameworkPreset = 'angular';
+        else if (analysis.framework === 'Vue') frameworkPreset = 'vuejs';
+        else if (analysis.framework === 'Svelte') frameworkPreset = 'sveltekit'; // SvelteKit is the common preset
+        else if (analysis.framework === 'Nuxt') frameworkPreset = 'nuxtjs';
+
+        // Add default vercel.json for SPAs to handle client-side routing
+        const spaFrameworks = ['Vite', 'Create React App', 'Vue', 'Angular', 'Svelte'];
+        if (!hasVercelConfig && spaFrameworks.includes(analysis.framework)) {
+            stream.log(`Adding default vercel.json for SPA routing at ${configPath}...`);
+
+            const spaConfig = {
+                rewrites: [{ source: "/(.*)", destination: "/index.html" }]
+            };
+
+            files.push({
+                file: configPath,
+                data: JSON.stringify(spaConfig, null, 2)
+            });
+        }
+
+        stream.log(`Prepared ${files.length} files for upload.`);
+        stream.log(`Project Analysis: ${analysis.framework} in ${analysis.rootDirectory || 'root'}`);
+        stream.log(`Build Command: ${analysis.buildCommand || 'default'}`);
+        stream.log(`Output Directory: ${analysis.outputDirectory || 'default'}`);
 
         const payload = {
             name: `ai-deploy-${workspaceId.substring(0, 8)}`,
@@ -73,9 +101,10 @@ const createDeployment = async (stream: DeploymentStream, workspaceId: string, a
                 framework: frameworkPreset,
                 buildCommand: analysis.buildCommand || undefined,
                 outputDirectory: analysis.outputDirectory || undefined,
-                installCommand: analysis.installCommand || undefined
+                installCommand: analysis.installCommand || undefined,
+                rootDirectory: analysis.rootDirectory || undefined
             },
-            target: 'production' // Force production for immediate URL
+            target: 'production'
         };
 
         stream.log("Sending deployment request to Vercel API...");
@@ -141,13 +170,14 @@ const pollDeployment = async (stream: DeploymentStream, deploymentId: string, to
     check();
 };
 
+
 const getAllFiles = async (dirPath: string, rootPath: string): Promise<VercelFile[]> => {
     let results: VercelFile[] = [];
     const list = await fs.readdir(dirPath);
 
     for (const file of list) {
         // Ignore node_modules, .git, etc
-        if (file === 'node_modules' || file === '.git' || file === '.env') continue;
+        if (file === 'node_modules' || file === '.git' || file === '.env' || file === '.next' || file === 'dist' || file === 'build') continue;
 
         const filePath = path.join(dirPath, file);
         const stat = await fs.stat(filePath);
@@ -155,15 +185,18 @@ const getAllFiles = async (dirPath: string, rootPath: string): Promise<VercelFil
         if (stat && stat.isDirectory()) {
             results = results.concat(await getAllFiles(filePath, rootPath));
         } else {
-            // Read file content
-            // For MVP simplicity, assume text files or small binaries handled as utf8 (Vercel API might need buffer handling or different encoding for binary, typically we send string content)
-            // Ideally we check extension/mime. For code, utf8 is safe.
             try {
-                const content = await fs.readFile(filePath, 'utf8');
-                const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/'); // ensure forward slashes
+                const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
+
+                // Read as buffer to handle binary files
+                const buffer = await fs.readFile(filePath);
+
+                // Decide if we should use base64 (for binary) or utf8
+                // For safety and simplicity, sending everything as base64 is robust
                 results.push({
                     file: relativePath,
-                    data: content
+                    data: buffer.toString('base64'),
+                    encoding: 'base64'
                 });
             } catch (err) {
                 console.warn(`Skipping file ${file}:`, err);

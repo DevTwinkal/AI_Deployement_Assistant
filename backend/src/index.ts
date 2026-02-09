@@ -13,10 +13,24 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Configure CORS to allow credentials (cookies)
+const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5173'
+];
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true, // Allow cookies
 }));
+
+app.set('trust proxy', 1); // Trust first proxy
 
 // Session Middleware
 app.use(session({
@@ -26,7 +40,8 @@ app.use(session({
     cookie: {
         secure: process.env.NODE_ENV === 'production', // true if https
         httpOnly: true, // prevent JS access
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax'
     }
 }));
 

@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = () => {
-        window.location.href = 'http://localhost:3000/auth/github';
+        window.location.href = `http://${window.location.hostname}:3000/auth/github`;
     };
 
     const logout = async () => {

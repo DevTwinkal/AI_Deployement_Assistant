@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:3000';
+export const API_BASE_URL = `http://${window.location.hostname}:3000`;
 
 const fetchWithAuth = async (url, options = {}) => {
     // If url starts with / , append to base. If it doesn't contain /api or /auth, checked by caller
